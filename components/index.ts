@@ -4,6 +4,7 @@ export { FloatingToolbar } from './FloatingToolbar';
 export { SectionEditor } from './SectionEditor';
 export { ThemeCustomizer } from './ThemeCustomizer';
 export { SettingsModal } from './SettingsModal';
+export { ProctoringMonitor } from './ProctoringMonitor';
 export { FormEditorHeader } from './FormEditorHeader';
 export { SendFormModal } from './SendFormModal';
 export { FormResponseView, QuestionResponseView } from './FormResponseView';
