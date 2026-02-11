@@ -77,7 +77,7 @@ export default function ViewFormPage() {
 
   return (
     <>
-      {form.settings.proctoringEnabled && (
+      {form.settings.proctoringEnabled !== false && (
         <ProctoringMonitor formId={formId} />
       )}
       <FormResponseView

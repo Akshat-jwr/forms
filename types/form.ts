@@ -75,27 +75,27 @@ export interface Question {
   required: boolean;
   imageUrl?: string;
   imageAlignment?: 'left' | 'center' | 'right';
-  
+
   // For multiple choice, checkboxes, dropdown
   options?: Option[];
   hasOtherOption?: boolean;
-  
+
   // For linear scale
   linearScale?: LinearScaleConfig;
-  
+
   // For grid types
   rows?: GridRow[];
   columns?: GridColumn[];
-  
+
   // For file upload
   fileUploadConfig?: FileUploadConfig;
-  
+
   // Validation
   validation?: ValidationRule;
-  
+
   // Shuffle options
   shuffleOptions?: boolean;
-  
+
   // Go to section based on answer (for multiple choice)
   goToSection?: { [optionId: string]: string }; // optionId -> sectionId
 }
@@ -119,19 +119,19 @@ export interface FormSettings {
   collectEmails: boolean;
   limitOneResponse: boolean;
   editAfterSubmit: boolean;
-  
+
   // Presentation
   showProgressBar: boolean;
   shuffleQuestions: boolean;
   confirmationMessage: string;
-  
+
   // Quiz settings
   isQuiz: boolean;
   releaseGrades: 'immediately' | 'later' | 'after_manual_review';
   showMissedQuestions: boolean;
   showCorrectAnswers: boolean;
   showPointValues: boolean;
-  
+
   // Proctoring
   proctoringEnabled: boolean;
 
@@ -231,7 +231,7 @@ export const defaultFormSettings: FormSettings = {
   showMissedQuestions: true,
   showCorrectAnswers: true,
   showPointValues: true,
-  proctoringEnabled: false,
+  proctoringEnabled: true,
   acceptingResponses: true,
 };
 
