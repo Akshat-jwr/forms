@@ -4,13 +4,12 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ProctoringViolation, ProctoringViolationType } from '@/types/form';
 import { AlertTriangle, Camera, CameraOff, Eye, ShieldAlert, X } from 'lucide-react';
 
-// Prohibited object classes from COCO-SSD
+// Prohibited object classes from COCO dataset (shared by MediaPipe ObjectDetector)
 const PROHIBITED_OBJECTS: Record<string, { type: ProctoringViolationType; label: string }> = {
     'cell phone': { type: 'phone_detected', label: 'Cell Phone' },
     'book': { type: 'book_detected', label: 'Book' },
     'laptop': { type: 'laptop_detected', label: 'Laptop' },
     'remote': { type: 'prohibited_object', label: 'Remote/Device' },
-    'tablet': { type: 'prohibited_object', label: 'Tablet' },
 };
 
 interface ProctoringMonitorProps {
@@ -23,9 +22,9 @@ export const ProctoringMonitor: React.FC<ProctoringMonitorProps> = ({
     onViolation,
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const modelRef = useRef<any>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const faceDetectorRef = useRef<any>(null);
+    const objectDetectorRef = useRef<any>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const lastViolationRef = useRef<Record<string, number>>({});
 
@@ -38,7 +37,7 @@ export const ProctoringMonitor: React.FC<ProctoringMonitorProps> = ({
     const [isMinimized, setIsMinimized] = useState(false);
     const [tabSwitchCount, setTabSwitchCount] = useState(0);
 
-    const VIOLATION_COOLDOWN_MS = 5000; // minimum gap between same violation type
+    const VIOLATION_COOLDOWN_MS = 5000;
 
     const addViolation = useCallback((type: ProctoringViolationType, message: string, confidence?: number) => {
         const now = Date.now();
@@ -71,41 +70,64 @@ export const ProctoringMonitor: React.FC<ProctoringMonitorProps> = ({
         }, 4000);
     }, [formId, onViolation]);
 
-    // Load TensorFlow.js and COCO-SSD model
+    // Load MediaPipe Vision models
     useEffect(() => {
         let cancelled = false;
 
-        const loadModel = async () => {
+        const loadModels = async () => {
             try {
                 setIsLoading(true);
 
-                // Dynamic imports to avoid SSR issues
-                const tf = await import('@tensorflow/tfjs');
-                await tf.ready();
+                const vision = await import('@mediapipe/tasks-vision');
+                const { FaceDetector, ObjectDetector, FilesetResolver } = vision;
 
-                const cocoSsd = await import('@tensorflow-models/coco-ssd');
-                const model = await cocoSsd.load({
-                    base: 'lite_mobilenet_v2', // Lighter model for better performance
+                // Load WASM fileset from CDN
+                const filesetResolver = await FilesetResolver.forVisionTasks(
+                    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+                );
+
+                // Create Face Detector (lightweight, fast)
+                const faceDetector = await FaceDetector.createFromOptions(filesetResolver, {
+                    baseOptions: {
+                        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite',
+                        delegate: 'GPU',
+                    },
+                    runningMode: 'IMAGE',
+                    minDetectionConfidence: 0.5,
+                });
+
+                // Create Object Detector (EfficientDet-Lite, COCO classes)
+                const objectDetector = await ObjectDetector.createFromOptions(filesetResolver, {
+                    baseOptions: {
+                        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/int8/1/efficientdet_lite0.tflite',
+                        delegate: 'GPU',
+                    },
+                    runningMode: 'IMAGE',
+                    maxResults: 10,
+                    scoreThreshold: 0.5,
                 });
 
                 if (!cancelled) {
-                    modelRef.current = model;
+                    faceDetectorRef.current = faceDetector;
+                    objectDetectorRef.current = objectDetector;
                     setModelLoaded(true);
                     setIsLoading(false);
                 }
             } catch (error) {
-                console.error('Failed to load detection model:', error);
+                console.error('Failed to load MediaPipe models:', error);
                 if (!cancelled) {
                     setIsLoading(false);
-                    setCameraError('Failed to load AI detection model. Proctoring will continue with tab-switch detection only.');
+                    setCameraError('Failed to load AI models. Proctoring will continue with tab-switch detection only.');
                 }
             }
         };
 
-        loadModel();
+        loadModels();
 
         return () => {
             cancelled = true;
+            faceDetectorRef.current?.close();
+            objectDetectorRef.current?.close();
         };
     }, []);
 
@@ -141,39 +163,47 @@ export const ProctoringMonitor: React.FC<ProctoringMonitorProps> = ({
         };
     }, []);
 
-    // Run object detection loop
+    // Run detection loop
     useEffect(() => {
         if (!modelLoaded || !cameraActive || !videoRef.current) return;
 
         const detect = async () => {
             const video = videoRef.current;
-            if (!video || !modelRef.current || video.readyState !== 4) return;
+            if (!video || video.readyState !== 4) return;
 
             try {
-                const predictions = await modelRef.current.detect(video);
+                // Face detection — person presence
+                if (faceDetectorRef.current) {
+                    const faceResult = faceDetectorRef.current.detect(video);
+                    const faceCount = faceResult.detections.length;
 
-                // Count people
-                const people = predictions.filter((p: any) => p.class === 'person');
-
-                if (people.length === 0) {
-                    addViolation('no_person', '⚠ No person detected — please stay in front of the camera');
-                } else if (people.length > 1) {
-                    addViolation(
-                        'multiple_people',
-                        `⚠ ${people.length} people detected — only the test-taker should be visible`,
-                        Math.max(...people.map((p: any) => p.score))
-                    );
+                    if (faceCount === 0) {
+                        addViolation('no_person', '⚠ No person detected — please stay in front of the camera');
+                    } else if (faceCount > 1) {
+                        addViolation(
+                            'multiple_people',
+                            `⚠ ${faceCount} people detected — only the test-taker should be visible`,
+                            Math.max(...faceResult.detections.map((d: any) => d.categories[0]?.score || 0))
+                        );
+                    }
                 }
 
-                // Check for prohibited objects
-                for (const prediction of predictions) {
-                    const prohibited = PROHIBITED_OBJECTS[prediction.class];
-                    if (prohibited && prediction.score > 0.5) {
-                        addViolation(
-                            prohibited.type,
-                            `⚠ ${prohibited.label} detected — prohibited items are not allowed`,
-                            prediction.score
-                        );
+                // Object detection — prohibited items
+                if (objectDetectorRef.current) {
+                    const objectResult = objectDetectorRef.current.detect(video);
+
+                    for (const detection of objectResult.detections) {
+                        const category = detection.categories[0];
+                        if (!category) continue;
+
+                        const prohibited = PROHIBITED_OBJECTS[category.categoryName.toLowerCase()];
+                        if (prohibited && category.score > 0.5) {
+                            addViolation(
+                                prohibited.type,
+                                `⚠ ${prohibited.label} detected — prohibited items are not allowed`,
+                                category.score
+                            );
+                        }
                     }
                 }
             } catch (error) {
@@ -181,7 +211,7 @@ export const ProctoringMonitor: React.FC<ProctoringMonitorProps> = ({
             }
         };
 
-        intervalRef.current = setInterval(detect, 2000);
+        intervalRef.current = setInterval(detect, 2500);
 
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
@@ -257,12 +287,11 @@ export const ProctoringMonitor: React.FC<ProctoringMonitorProps> = ({
                             playsInline
                             className="proctoring-video"
                         />
-                        <canvas ref={canvasRef} className="proctoring-canvas" />
 
                         {isLoading && (
                             <div className="proctoring-loading">
                                 <div className="proctoring-spinner" />
-                                <span>Loading model...</span>
+                                <span>Loading models...</span>
                             </div>
                         )}
 
