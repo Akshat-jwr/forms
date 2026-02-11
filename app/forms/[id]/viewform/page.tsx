@@ -18,6 +18,30 @@ export default function ViewFormPage() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        alert('You have switched tabs. Please return to the assessment.');
+      }
+    };
+
+    const requestMediaAccess = async () => {
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        console.log('Camera and microphone access granted.');
+      } catch (error) {
+        console.error('Camera and microphone access denied:', error);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    requestMediaAccess();
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
