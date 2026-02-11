@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useFormStore } from '@/store';
 import { QuestionResponse } from '@/types/form';
-import { FormResponseView } from '@/components';
+import { FormResponseView, ProctoringMonitor } from '@/components';
 
 export default function ViewFormPage() {
   const params = useParams();
@@ -76,17 +76,22 @@ export default function ViewFormPage() {
   };
 
   return (
-    <FormResponseView
-      sections={form.sections}
-      responses={responses}
-      onResponseChange={handleResponseChange}
-      onSubmit={handleSubmit}
-      onClear={handleClear}
-      headerColor={form.theme.headerColor}
-      backgroundColor={form.theme.backgroundColor}
-      title={form.title}
-      description={form.description}
-      showProgressBar={form.settings.showProgressBar}
-    />
+    <>
+      {form.settings.proctoringEnabled && (
+        <ProctoringMonitor formId={formId} />
+      )}
+      <FormResponseView
+        sections={form.sections}
+        responses={responses}
+        onResponseChange={handleResponseChange}
+        onSubmit={handleSubmit}
+        onClear={handleClear}
+        headerColor={form.theme.headerColor}
+        backgroundColor={form.theme.backgroundColor}
+        title={form.title}
+        description={form.description}
+        showProgressBar={form.settings.showProgressBar}
+      />
+    </>
   );
 }

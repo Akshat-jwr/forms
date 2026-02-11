@@ -1,5 +1,21 @@
 // Form Types and Interfaces for Google Forms Clone
 
+export type ProctoringViolationType =
+  | 'no_person'
+  | 'multiple_people'
+  | 'phone_detected'
+  | 'book_detected'
+  | 'laptop_detected'
+  | 'prohibited_object'
+  | 'tab_switch';
+
+export interface ProctoringViolation {
+  type: ProctoringViolationType;
+  timestamp: Date;
+  message: string;
+  confidence?: number;
+}
+
 export type QuestionType =
   | 'short_answer'
   | 'paragraph'
@@ -116,6 +132,9 @@ export interface FormSettings {
   showCorrectAnswers: boolean;
   showPointValues: boolean;
   
+  // Proctoring
+  proctoringEnabled: boolean;
+
   // Other
   acceptingResponses: boolean;
   responseDeadline?: Date;
@@ -212,6 +231,7 @@ export const defaultFormSettings: FormSettings = {
   showMissedQuestions: true,
   showCorrectAnswers: true,
   showPointValues: true,
+  proctoringEnabled: false,
   acceptingResponses: true,
 };
 

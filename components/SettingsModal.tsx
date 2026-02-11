@@ -33,7 +33,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Defaults section */}
           <div>
             <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">Defaults</h3>
-            
+
             <div className="space-y-4">
               <label className="flex items-center justify-between">
                 <div>
@@ -50,7 +50,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Responses section */}
           <div>
             <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">Responses</h3>
-            
+
             <div className="space-y-4">
               <label className="flex items-center justify-between">
                 <div>
@@ -96,7 +96,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Presentation section */}
           <div>
             <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">Presentation</h3>
-            
+
             <div className="space-y-4">
               <label className="flex items-center justify-between">
                 <div>
@@ -134,7 +134,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Quiz section */}
           <div>
             <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">Quizzes</h3>
-            
+
             <div className="space-y-4">
               <label className="flex items-center justify-between">
                 <div>
@@ -198,10 +198,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
+          {/* Proctoring section */}
+          <div>
+            <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">Proctoring</h3>
+
+            <div className="space-y-4">
+              <label className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Enable AI Proctoring</div>
+                  <div className="text-sm text-text-secondary">
+                    Uses camera to detect prohibited items and monitor test-taker presence
+                  </div>
+                </div>
+                <button
+                  className={`toggle-switch ${settings.proctoringEnabled ? 'active' : ''}`}
+                  onClick={() => onUpdateSettings({ proctoringEnabled: !settings.proctoringEnabled })}
+                />
+              </label>
+
+              {settings.proctoringEnabled && (
+                <div className="text-xs text-text-secondary bg-hover rounded p-3">
+                  <strong>When enabled:</strong>
+                  <ul className="mt-1 ml-4 list-disc space-y-1">
+                    <li>Camera access is required for respondents</li>
+                    <li>AI detects absence, multiple people, phones, books, and laptops</li>
+                    <li>Tab switching is tracked and flagged</li>
+                    <li>All violations are logged for review</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Form Status */}
           <div>
             <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">Form status</h3>
-            
+
             <label className="flex items-center justify-between">
               <div>
                 <div className="font-medium">Accepting responses</div>
